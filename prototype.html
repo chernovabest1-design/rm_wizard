@@ -1,0 +1,1781 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rate Match activation guard</title>
+  <style>
+    :root {
+      --purple: #5b2db6;
+      --purple-2: #8d6bd1;
+      --purple-soft: #eee7ff;
+      --bg: #f5f6f8;
+      --panel: #fff;
+      --line: #d8dde6;
+      --head: #d7dde6;
+      --text: #242a36;
+      --muted: #667085;
+      --blue: #e7f2ff;
+      --blue-line: #8cc7ff;
+      --green: #14804a;
+      --green-bg: #eaf7ef;
+      --amber: #a15c00;
+      --amber-bg: #fff4df;
+      --red: #b42318;
+      --red-bg: #ffebe9;
+      --shadow: 0 16px 34px rgba(31, 41, 55, .18);
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 16px;
+      line-height: 1.45;
+    }
+    button, select, input { font: inherit; }
+    button { cursor: pointer; }
+    .app {
+      display: grid;
+      grid-template-columns: 350px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+    .sidebar {
+      background: #efeff1;
+      border-right: 1px solid #cdd3dc;
+    }
+    .hotel {
+      height: 60px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 0 18px;
+      background: #7e57c2;
+      color: #fff;
+      font-weight: 700;
+    }
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #efe7ff;
+      color: #6038a7;
+    }
+    .nav { padding: 8px 0 24px; }
+    .nav button {
+      width: 100%;
+      min-height: 52px;
+      border: 0;
+      background: transparent;
+      text-align: left;
+      color: #333946;
+      padding: 0 18px;
+    }
+    .nav button:hover { background: #e7e7ea; }
+    .nav .section { font-weight: 700; }
+    .nav .sub {
+      padding-left: 58px;
+      background: #e8e8ea;
+    }
+    .nav .sub.active {
+      background: #9370d4;
+      color: #fff;
+      font-weight: 700;
+    }
+    .nav .alert {
+      float: right;
+      min-width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: inline-grid;
+      place-items: center;
+      background: #ff5a1f;
+      color: #fff;
+      font-size: 12px;
+      margin-top: -2px;
+    }
+    .main { min-width: 0; }
+    .topbar {
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px 0 38px;
+      background: #fff;
+      box-shadow: 0 3px 10px rgba(0,0,0,.18);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    .save {
+      border: 0;
+      border-radius: 22px;
+      background: var(--purple);
+      color: #fff;
+      padding: 9px 18px;
+      font-weight: 700;
+    }
+    .icons { display: flex; gap: 18px; color: var(--purple); font-weight: 700; }
+    .content {
+      max-width: 1500px;
+      padding: 32px 38px 50px;
+    }
+    h1 {
+      margin: 0 0 26px;
+      color: #46484d;
+      font-size: 48px;
+      line-height: 1.1;
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 0;
+      font-size: 26px;
+      line-height: 1.2;
+      font-weight: 500;
+    }
+    h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      line-height: 1.25;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      padding: 24px 26px;
+      margin-bottom: 24px;
+    }
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 18px;
+    }
+    .muted { color: var(--muted); font-size: 14px; }
+    .tabs {
+      display: flex;
+      overflow-x: auto;
+      margin: 22px 0 24px;
+      border-bottom: 1px solid var(--purple-2);
+    }
+    .tab {
+      min-height: 60px;
+      padding: 15px 20px;
+      border: 1px solid transparent;
+      border-bottom: 0;
+      background: transparent;
+      color: #273142;
+      white-space: nowrap;
+    }
+    .tab.active {
+      background: #fff;
+      border-color: var(--purple-2);
+    }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      padding: 7px 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .status.setup { background: var(--amber-bg); border-color: #ffd38a; color: var(--amber); }
+    .status.ready { background: var(--blue); border-color: var(--blue-line); color: #175cd3; }
+    .status.active { background: var(--green-bg); border-color: #a4d9b9; color: var(--green); }
+    .status.paused { background: var(--red-bg); border-color: #ffb2aa; color: var(--red); }
+    .status.neutral { background: #eef1f5; border-color: #cfd4dc; color: #344054; }
+    .hero-grid {
+      display: block;
+    }
+    .health-card {
+      border: 0;
+      background: transparent;
+      border-radius: 0;
+      padding: 0;
+      min-height: 0;
+    }
+    .notice {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 13px 16px;
+      background: var(--amber-bg);
+      border: 1px solid #ffd38a;
+      margin-bottom: 12px;
+    }
+    .notice strong { color: var(--amber); }
+    .notice.info {
+      background: var(--blue);
+      border-color: var(--blue-line);
+    }
+    .notice.info strong {
+      color: #1b7edc;
+    }
+    .prototype-actions { display: none; }
+    .btn-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .btn {
+      min-height: 40px;
+      border: 1px solid var(--purple);
+      border-radius: 22px;
+      padding: 8px 16px;
+      background: #fff;
+      color: var(--purple);
+      font-weight: 700;
+    }
+    .btn.primary { background: var(--purple); color: #fff; }
+    .btn.danger { border-color: var(--red); color: var(--red); }
+    .btn:disabled {
+      border-color: #c8cdd6;
+      background: #eef0f3;
+      color: #858c99;
+      cursor: not-allowed;
+    }
+    .activation-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 16px;
+      font-weight: 700;
+    }
+    .activation-toggle input {
+      width: 22px;
+      height: 22px;
+      min-width: 22px;
+      accent-color: var(--purple);
+    }
+    .activation-toggle.disabled {
+      color: #858c99;
+    }
+    .hint-box {
+      margin-top: 10px;
+      padding: 12px 14px;
+      border: 1px solid #ffd38a;
+      border-radius: 6px;
+      background: var(--amber-bg);
+      color: #5f3700;
+      font-size: 14px;
+    }
+    .hint-box ul {
+      margin: 8px 0 0 18px;
+      padding: 0;
+    }
+    .hint-box[hidden] {
+      display: none;
+    }
+    .hint-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .inline-link {
+      border: 0;
+      background: transparent;
+      color: var(--purple);
+      padding: 0;
+      font-weight: 700;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .checklist { display: grid; gap: 10px; }
+    .check {
+      display: grid;
+      grid-template-columns: 30px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+    }
+    .check.ok { background: #fbfffc; border-color: #a4d9b9; }
+    .check.warn { background: #fffaf0; border-color: #ffd38a; }
+    .check.block { background: #fff8f7; border-color: #ffb2aa; }
+    .dot {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #98a2b3;
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .ok .dot { background: var(--green); }
+    .warn .dot { background: #c77800; }
+    .block .dot { background: var(--red); }
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .main-only[hidden] { display: none !important; }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(230px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      padding: 16px;
+    }
+    .card.bad { background: #fff8f7; border-color: #ffb2aa; }
+    .card.good { background: #fbfffc; border-color: #a4d9b9; }
+    .card.warn { background: #fffaf0; border-color: #ffd38a; }
+    .card h3 { margin-bottom: 6px; }
+    .issue-list {
+      margin: 8px 0 0 18px;
+      padding: 0;
+    }
+    .issue-list li { margin: 4px 0; }
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+    table {
+      width: 100%;
+      min-width: 860px;
+      border-collapse: collapse;
+    }
+    th {
+      background: var(--head);
+      color: #263042;
+      text-align: left;
+      font-weight: 500;
+      padding: 13px 16px;
+    }
+    td {
+      border-top: 1px solid var(--line);
+      padding: 11px 16px;
+      vertical-align: middle;
+    }
+    select, input {
+      min-height: 40px;
+      border: 1px solid #bfc5cf;
+      border-radius: 8px;
+      background: #fff;
+      padding: 8px 12px;
+      min-width: 230px;
+      color: #2f3747;
+    }
+    .source-checkbox {
+      width: 24px;
+      height: 24px;
+      min-width: 24px;
+      margin: 0 8px 0 0;
+      vertical-align: middle;
+      accent-color: var(--purple);
+    }
+    .wand-icon {
+      position: relative;
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      margin-right: 6px;
+      vertical-align: -2px;
+    }
+    .wand-icon::before {
+      content: "";
+      position: absolute;
+      left: 3px;
+      top: 8px;
+      width: 13px;
+      height: 2px;
+      background: currentColor;
+      transform: rotate(-42deg);
+      border-radius: 2px;
+    }
+    .wand-icon::after {
+      content: "*";
+      position: absolute;
+      left: 0;
+      top: -5px;
+      font-size: 16px;
+      line-height: 16px;
+      font-weight: 700;
+    }
+    .rate-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin: 0 0 18px;
+    }
+    .filter-pill {
+      min-height: 40px;
+      border: 1px solid var(--purple);
+      border-radius: 22px;
+      padding: 8px 16px;
+      background: #fff;
+      color: var(--purple);
+      font-weight: 700;
+    }
+    .filter-pill span { font-weight: 400; }
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+    .search-box input { min-width: 280px; }
+    .divider {
+      height: 1px;
+      background: var(--line);
+      margin: 12px 0 26px;
+    }
+    .hotel-settings h2 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 400;
+    }
+    .hotel-settings p {
+      margin: 0 0 26px;
+    }
+    .hotel-settings .table-wrap {
+      overflow: visible;
+    }
+    .hotel-settings table {
+      min-width: 0;
+      table-layout: fixed;
+    }
+    .action-cell {
+      width: 120px;
+      text-align: right;
+      position: relative;
+    }
+    .inline-cell-action {
+      float: right;
+      margin-left: 16px;
+    }
+    .circle-action {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1px solid var(--purple);
+      background: #fff;
+      color: var(--purple);
+      line-height: 1;
+      display: inline-grid;
+      place-items: center;
+      font-size: 15px;
+    }
+    .action-menu {
+      position: absolute;
+      right: 16px;
+      top: 42px;
+      min-width: 130px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: #fff;
+      box-shadow: var(--shadow);
+      z-index: 10;
+      text-align: left;
+    }
+    .action-menu[hidden] {
+      display: none;
+    }
+    .menu-action {
+      width: 100%;
+      min-height: 34px;
+      border: 0;
+      border-radius: 3px;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      padding: 7px 10px;
+      cursor: pointer;
+    }
+    .menu-action:hover {
+      background: var(--purple-soft);
+      color: var(--purple);
+    }
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 210px 180px;
+      align-items: center;
+      gap: 16px 20px;
+      max-width: 520px;
+    }
+    .hotel-search {
+      display: grid;
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+    .hotel-search-row {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      flex-wrap: wrap;
+    }
+    .hotel-search-row label {
+      min-width: 90px;
+    }
+    .hotel-search-row input {
+      width: min(560px, 100%);
+    }
+    .hotel-count {
+      margin: 0 0 22px;
+      font-weight: 700;
+    }
+    .timeline { display: grid; gap: 12px; }
+    .event {
+      display: grid;
+      grid-template-columns: 130px 1fr;
+      gap: 12px;
+      border-left: 3px solid var(--line);
+      padding-left: 14px;
+    }
+    .empty-state {
+      border: 1px solid var(--line);
+      background: #fff;
+      padding: 28px 22px;
+      color: var(--text);
+    }
+    .empty-state p {
+      margin: 0;
+    }
+    .empty-state .inline-link {
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: var(--purple);
+      text-decoration: underline;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      place-items: center;
+      background: rgba(25,28,36,.45);
+      padding: 24px;
+      z-index: 30;
+    }
+    .modal-backdrop.show { display: grid; }
+    .modal {
+      width: min(620px, 100%);
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+    .toast {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      max-width: 460px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      background: #1f2937;
+      color: #fff;
+      box-shadow: var(--shadow);
+      transform: translateY(140%);
+      transition: transform .18s ease;
+      z-index: 40;
+    }
+    .toast.show { transform: translateY(0); }
+    @media (max-width: 1080px) {
+      .app { grid-template-columns: 1fr; }
+      .content { padding: 24px 18px 44px; }
+      .hero-grid, .cards { grid-template-columns: 1fr; }
+      h1 { font-size: 40px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="hotel">
+        <div class="avatar">L</div>
+        <div>
+          <div>Luxury Hotel in Perth</div>
+          <div>507925 Perth</div>
+        </div>
+      </div>
+      <nav class="nav">
+        <button>Property settings</button>
+        <button>Channel Manager</button>
+        <button>Analytics</button>
+        <button>Price monitor</button>
+        <button class="section">Rate Match</button>
+        <button class="sub" data-screen="history">Price history</button>
+        <button class="sub active" data-screen="mapping">Main settings <span class="alert" id="navAlerts">A</span></button>
+        <button class="sub" data-screen="sources">Hotel settings <span class="alert">A</span></button>
+        <button>Guest management</button>
+        <button>Booking Engine</button>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <button class="save" id="saveBtn">Save</button>
+        <div class="icons"><span>elena.cherno...</span></div>
+      </div>
+
+      <div class="content">
+        <h1 id="pageTitle">Main settings</h1>
+
+        <section class="panel main-only">
+          <div class="panel-head">
+            <div>
+              <h2>Activate Rate Match</h2>
+            </div>
+          </div>
+          <div class="hero-grid">
+            <div class="health-card">
+              <span id="statusText" hidden></span>
+              <h3 id="statusTitle" hidden>Activation blocked</h3>
+              <label class="activation-toggle" id="activationToggle">
+                <input type="checkbox" id="activateCheckbox">
+                <span>Enable Rate Match</span>
+              </label>
+              <div class="hint-box" id="activationHint">
+                Rate Match cannot be enabled yet:
+                <ul id="activationHintList"></ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="tabs main-only">
+          <button class="tab active" data-screen="mapping">Room type mapping</button>
+          <button class="tab" data-screen="plans">Enable Rate Match in rate plans</button>
+          <button class="tab" data-screen="price">Price settings</button>
+        </div>
+
+        <section class="screen" id="health">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Preflight checklist</h2>
+              <button class="btn" id="copyDiagnostics">Copy diagnostics</button>
+            </div>
+            <div class="checklist" id="checklist"></div>
+            <div class="btn-row">
+              <button class="btn primary" data-screen="sources">Fix sources</button>
+              <button class="btn" data-screen="mapping">Open mapping</button>
+              <button class="btn" data-screen="plans">Open rate plans</button>
+            </div>
+          </section>
+        </section>
+
+        <section class="screen" id="sources">
+          <section class="panel hotel-settings">
+            <h2>Select a hotel</h2>
+            <div class="divider"></div>
+            <div id="initialHotelState">
+              <p>Main hotel</p>
+              <div class="table-wrap">
+                <table>
+                  <thead id="selectedHotelHead">
+                    <tr>
+                      <th>Hotel name</th>
+                      <th>Address</th>
+                      <th>Sources</th>
+                    </tr>
+                  </thead>
+                  <tbody id="selectedHotelBody">
+                    <tr>
+                      <td colspan="3">Main hotel is not selected yet. <button class="btn inline-cell-action" id="openHotelPicker">Add hotel</button></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div id="hotelPickerArea" hidden>
+              <div class="hotel-search" id="hotelSearchForm">
+                <div class="hotel-search-row">
+                  <label for="hotelSearchInput">Hotel name</label>
+                  <input id="hotelSearchInput" placeholder="Enter a hotel name">
+                </div>
+                <div class="hotel-search-row">
+                  <select aria-label="Country">
+                    <option>Any country</option>
+                  </select>
+                </div>
+              </div>
+              <p class="hotel-count" id="hotelCount">Hotels found: 46</p>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr id="hotelTableHead">
+                      <th>Hotel name</th>
+                      <th>City</th>
+                      <th>Address</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="hotelTableBody">
+                    <tr>
+                      <td>[Autotest] WebPMS Deposit. Deposit in a group booking</td>
+                      <td>Zvenigovo</td>
+                      <td>city Yoshkar-Ola, The Mari El Republic</td>
+                      <td><button class="inline-link add-main-hotel-option">Add</button></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel hotel-settings">
+            <h2>Additional settings</h2>
+            <div class="divider"></div>
+            <div class="settings-grid">
+              <label>Language</label>
+              <select><option>English US</option></select>
+              <label>Currency</label>
+              <select id="currencySelect"><option>USD</option><option>IDR</option></select>
+              <label>Notification language</label>
+              <select><option>English US</option></select>
+            </div>
+          </section>
+        </section>
+
+        <section class="screen active" id="mapping">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Room type mapping</h2>
+                <p class="muted" id="mappingHint">Map the room types in your account with those available on OTA.</p>
+              </div>
+              <button class="btn primary" id="aiMappingBtn" title="Map categories with AI"><span class="wand-icon" aria-hidden="true"></span>Map categories with AI</button>
+            </div>
+            <div class="empty-state" id="mappingEmpty">
+              <p>
+                Categories from sources are not collected. Please
+                <button class="inline-link" data-screen="sources">select the main hotel</button>
+                so that they would appear.
+              </p>
+            </div>
+            <div class="notice" id="categoryCollectionError" hidden>
+              <strong>!</strong>
+              <div>
+                Category collection from Booking Engine failed because Booking Engine is not in live mode.
+              </div>
+            </div>
+            <div id="mappingContent" hidden>
+              <div class="notice info">
+                <strong>ⓘ</strong>
+                <div>
+                  Map the room types in your account with those available on OTA.
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Booking engine</th>
+                      <th><input class="source-checkbox" type="checkbox" aria-label="Select Booking.com source" disabled> Booking.com</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Luxury (5002667)</td>
+                      <td>
+                        <select class="mapping-select" id="mappingSelect">
+                          <option value="">not selected</option>
+                          <option value="luxury">Luxury (5002667)</option>
+                          <option value="comfort">Comfort (5002666)</option>
+                        </select>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Comfort (5002666)</td>
+                      <td>
+                        <select class="mapping-select">
+                          <option value="">not selected</option>
+                          <option value="luxury">Luxury (5002667)</option>
+                          <option value="comfort">Comfort (5002666)</option>
+                        </select>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <section class="screen" id="price">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Price settings</h2>
+                <p class="muted">Existing price rules stay on the same tab. Activation is still blocked until room mapping and rate plans are ready.</p>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Setting</th>
+                    <th>Value</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Maximum discount</td>
+                    <td>10%</td>
+                    <td>Ready</td>
+                  </tr>
+                  <tr>
+                    <td>Price override mode</td>
+                    <td>Decrease only</td>
+                    <td>Ready</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section class="screen" id="plans">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Enable Rate Match in rate plans</h2>
+              </div>
+            </div>
+            <div class="notice info">
+              <strong>ⓘ</strong>
+              <div>
+                Rate plans with <span id="ratePlanCurrencyLabel">USD</span> currency are displayed now. To show rate plans with another currency, change the currency in <a href="#" data-screen="sources">Hotel Settings</a>.
+              </div>
+            </div>
+            <div class="rate-toolbar">
+              <button class="filter-pill">Connection status: <span>all</span></button>
+              <div class="search-box"><input aria-label="Search rate plans"><button class="btn">Search</button></div>
+            </div>
+            <div class="empty-state" id="ratePlansEmpty">
+              <p>No rate plans are available for Rate Match</p>
+            </div>
+            <div class="table-wrap" id="ratePlansTable" hidden>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Enable Rate Match in rate plans</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="ratePlansBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section class="screen" id="missing-section">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Rate Match section unavailable</h2>
+                <p class="muted">Prototype state: user opened Rate Match, but the section is hidden.</p>
+              </div>
+              <span class="status setup">Setup required</span>
+            </div>
+            <div class="notice">
+              <strong>!</strong>
+              <div>
+                The Rate Match section is not displayed because the prerequisites are not met. The user should see the reason and the next step.
+              </div>
+            </div>
+            <div class="cards">
+              <div class="card bad">
+                <h3>Feature access</h3>
+                <p class="muted">Rate Match section is not enabled for this provider or user role.</p>
+                <button class="btn">Check access</button>
+              </div>
+              <div class="card bad">
+                <h3>Price Monitor</h3>
+                <p class="muted">Main hotel/source may be missing in Price Monitor.</p>
+                <button class="btn">Open Price Monitor</button>
+              </div>
+              <div class="card warn">
+                <h3>Diagnostics</h3>
+                <p class="muted">Copy provider state for second line if the section still does not appear.</p>
+                <button class="btn" id="copySectionDiagnostics">Copy diagnostics</button>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <section class="screen" id="history">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Diagnostics log</h2>
+              <button class="btn" id="resetDemo">Reset demo</button>
+            </div>
+            <div class="timeline" id="historyList"></div>
+          </section>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="confirmModal" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h2 id="modalTitle">This will pause Rate Match</h2>
+      <div id="modalBody">A required dependency will be removed.</div>
+      <div class="btn-row">
+        <button class="btn" id="cancelModal">Cancel</button>
+        <button class="btn primary" id="confirmModalBtn">Pause Rate Match and continue</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const state = {
+      beMode: "missing",
+      ota: false,
+      mainHotel: false,
+      categories: false,
+      categoryCollectionError: false,
+      bookingSourceSelected: false,
+      mapping: false,
+      plan: false,
+      live: false,
+      pausedReason: "",
+      pendingDanger: null,
+      pendingToast: "",
+      beSourceAdded: false,
+      hotelPickerOpen: false,
+      currency: "USD",
+      planStatus: "none",
+      selectedPlanName: "",
+      connectedPlanNames: [],
+      planErrors: {},
+      history: [["Initial", "Activation health opened. Rate Match is not active."]]
+    };
+
+    const requirements = [
+      { key: "be", label: "Booking Engine source exists in the main hotel", collect: true, live: true, screen: "sources" },
+      { key: "beLive", label: "Booking Engine source is in live mode", collect: false, live: true, screen: "sources" },
+      { key: "ota", label: "At least one OTA hotel/source is added", collect: true, live: true, screen: "sources" },
+      { key: "categories", label: "OTA categories are collected before activation", collect: false, live: true, screen: "health" },
+      { key: "mapping", label: "At least one room category mapping exists", collect: false, live: true, screen: "mapping" },
+      { key: "plan", label: "At least one rate plan is connected to Rate Match", collect: false, live: true, screen: "plans" }
+    ];
+
+    const $ = selector => document.querySelector(selector);
+    const $$ = selector => Array.from(document.querySelectorAll(selector));
+
+    function hasBe() { return state.beMode !== "missing"; }
+    function beLive() { return state.beMode === "live"; }
+    function canCollect() { return hasBe() && state.ota && !state.categories; }
+    function readyToLive() { return beLive() && state.ota && state.categories && state.mapping && state.plan; }
+    function activationCheckboxBlockers() {
+      const blockers = [];
+      if (!state.mainHotel || !beLive() || !state.ota) blockers.push("select a main hotel with Booking Engine and at least one OTA source");
+      if (!state.mapping) blockers.push("set up at least one room category mapping");
+      if (!state.plan) blockers.push("connect at least one rate plan to Rate Match");
+      return blockers;
+    }
+
+    function check(key) {
+      if (key === "be") return hasBe();
+      if (key === "beLive") return beLive();
+      return Boolean(state[key]);
+    }
+
+    function currentStatus() {
+      if (state.pausedReason) return "paused";
+      if (state.live) return "active";
+      if (readyToLive()) return "ready";
+      if (state.categories) return "categories";
+      if (hasBe() && state.ota) return "collect";
+      return "setup";
+    }
+
+    function addHistory(text) {
+      state.history.unshift(["Now", text]);
+      render();
+    }
+
+    function toast(text) {
+      const el = $("#toast");
+      el.textContent = text;
+      el.classList.add("show");
+      clearTimeout(toast.timer);
+      toast.timer = setTimeout(() => el.classList.remove("show"), 2600);
+    }
+
+    function renderStatus() {
+      const status = currentStatus();
+      const content = {
+        setup: ["Setup required", "Not ready for category collection", "Add Booking Engine and at least one OTA source to start collecting OTA categories."],
+        collect: ["Ready to collect categories", "Sources are ready", "Collect OTA categories before activation. Rate Match will remain inactive."],
+        categories: ["Categories collected", "Ready for mapping", "Map at least one room type, enable a rate plan, and switch BE to live if needed."],
+        ready: ["Ready to go live", "All checks passed", "Rate Match is ready for explicit live activation."],
+        active: ["Active", "Rate Match is live", "Rate Match can override prices for enabled rate plans."],
+        paused: ["Paused by configuration change", "Rate Match is paused", state.pausedReason]
+      }[status];
+
+      $("#statusTitle").textContent = content[1];
+      $("#statusText").textContent = "Price override will start working only after room category mapping is configured and a Rate Match rate plan is connected.";
+      const collectBtn = $("#collectBtn");
+      if (collectBtn) collectBtn.disabled = !canCollect() || state.live;
+      const goLiveBtn = $("#goLiveBtn");
+      if (goLiveBtn) goLiveBtn.disabled = !readyToLive() || state.live;
+      const checkboxBlockers = activationCheckboxBlockers();
+      const checkbox = $("#activateCheckbox");
+      checkbox.disabled = !state.live && checkboxBlockers.length > 0;
+      checkbox.checked = state.live;
+      $("#activationToggle").classList.toggle("disabled", checkbox.disabled);
+      $("#activationHint").hidden = checkboxBlockers.length === 0;
+      $("#activationHintList").innerHTML = checkboxBlockers.map(item => `<li>${item}</li>`).join("");
+      const pauseNotice = $("#pauseNotice");
+      if (pauseNotice) pauseNotice.hidden = status !== "paused";
+      const pauseText = $("#pauseText");
+      if (pauseText) pauseText.textContent = state.pausedReason || "";
+    }
+
+    function renderChecklist() {
+      const root = $("#checklist");
+      root.innerHTML = requirements.map(item => {
+        const ok = check(item.key);
+        const warn = item.key === "beLive" && state.beMode === "test";
+        const mode = ok ? "ok" : warn ? "warn" : "block";
+        const helper = ok ? "Done" : warn ? "Required only for Go live. Category collection is allowed." : item.collect ? "Required for category collection" : "Required for Go live";
+        return `<div class="check ${mode}">
+          <span class="dot">${ok ? "✓" : "!"}</span>
+          <div><strong>${item.label}</strong><div class="muted">${helper}</div></div>
+          <button class="btn" data-screen="${item.screen}">${ok ? "View" : "Fix"}</button>
+        </div>`;
+      }).join("");
+      $("#navAlerts").textContent = "A";
+    }
+
+    function renderSources() {
+      const initialHotelState = $("#initialHotelState");
+      const hotelPickerArea = $("#hotelPickerArea");
+      const selectedHotelBody = $("#selectedHotelBody");
+      const currencySelect = $("#currencySelect");
+      if (currencySelect) {
+        currencySelect.value = state.currency;
+        currencySelect.disabled = state.plan;
+      }
+      if (initialHotelState) initialHotelState.hidden = state.hotelPickerOpen && !state.mainHotel;
+      if (hotelPickerArea) hotelPickerArea.hidden = !state.hotelPickerOpen || state.mainHotel;
+      if (selectedHotelBody) {
+        selectedHotelBody.innerHTML = state.mainHotel
+          ? `<tr>
+              <td>Hotel Exely (copied from Hotel Exely Tbilisi)</td>
+              <td>15 Chavchavadze av., Perth, Western Australia</td>
+              <td>${hasBe() ? "Booking Engine, Booking.com" : "not selected"} <button class="btn inline-cell-action" id="replaceHotelAction">Replace hotel</button></td>
+            </tr>`
+          : `<tr>
+              <td colspan="3">Main hotel is not selected yet. <button class="btn inline-cell-action" id="openHotelPicker">Add hotel</button></td>
+            </tr>`;
+      }
+      const hotelSearchForm = $("#hotelSearchForm");
+      const hotelCount = $("#hotelCount");
+      const hotelTableHead = $("#hotelTableHead");
+      if (hotelSearchForm) hotelSearchForm.hidden = state.mainHotel;
+      if (hotelCount) hotelCount.hidden = state.mainHotel;
+      if (hotelTableHead) {
+        hotelTableHead.innerHTML = state.mainHotel
+          ? `<th>Hotel name</th><th>Address</th><th>Sources</th>`
+          : `<th>Hotel name</th><th>City</th><th>Address</th><th>Action</th>`;
+      }
+      const hotelTableBody = $("#hotelTableBody");
+      if (hotelTableBody) {
+        hotelTableBody.innerHTML = state.mainHotel
+          ? `<tr><td>Hotel Exely (copied from Hotel Exely Tbilisi)</td>
+             <td>15 Chavchavadze av., Perth, Western Australia</td>
+             <td>${hasBe() ? "Booking Engine, Booking.com" : "not selected"}</td></tr>`
+          : `<tr><td>[Autotest] WebPMS Deposit. Deposit in a group booking</td>
+             <td>Zvenigovo</td>
+             <td>city Yoshkar-Ola, The Mari El Republic</td>
+             <td><button class="inline-link add-main-hotel-option">Add</button></td>
+             </tr>
+             <tr>
+             <td>[RM+RS] The Artur Sandbox</td>
+             <td>Koptevka</td>
+             <td>ul. Glavnaya, d. 1/2 korp. 1 str. 3, city Kingstown, Kingstown</td>
+             <td><button class="inline-link add-main-hotel-option">Add</button></td>
+             </tr>
+             <tr>
+             <td>Aparthotel Amella</td>
+             <td>Riga</td>
+             <td>Emilijas Benjaminas iela 8, Riga, LV-1050, Latvia</td>
+             <td><button class="inline-link add-main-hotel-option">Add</button></td>
+             </tr>
+             <tr>
+             <td>Atmosfera Rivera Apart-Hotel</td>
+             <td>Yoshkar-Ola</td>
+             <td>ulitsa Krasnoarmeyskaya 3A, Sochi</td>
+             <td><button class="inline-link add-main-hotel-option">Add</button></td>
+             </tr>
+             <tr>
+             <td>Koulen Central Hotel</td>
+             <td>Siem Reap</td>
+             <td>Sivatha Road, Siem Reap, Cambodia</td>
+             <td><button class="inline-link add-main-hotel-option">Add</button></td>`;
+      }
+      const beCard = $("#beCard");
+      if (!beCard) return;
+      beCard.className = "card " + (beLive() ? "good" : state.beMode === "test" ? "warn" : "bad");
+      $("#otaCard").className = "card " + (state.ota ? "good" : "bad");
+      $("#beDescription").textContent = state.beMode === "live" ? "BE is live. Price override can go live after all checks pass." : state.beMode === "test" ? "BE is in test mode. Categories can be collected, but Go live is blocked." : "Missing from main hotel.";
+      $("#otaDescription").textContent = state.ota ? "Booking.com source is connected to main hotel." : "At least one OTA is required.";
+      $("#addBeTest").disabled = hasBe();
+      $("#addBeLive").disabled = beLive();
+      $("#addBeLive").textContent = beLive() ? "BE is live" : "Switch BE to live";
+      $("#addOta").disabled = state.ota;
+      $("#addOta").textContent = state.ota ? "Booking.com added" : "Add Booking.com";
+      $("#sourcesStatus").className = "status " + (hasBe() && state.ota ? "active" : "setup");
+      $("#sourcesStatus").textContent = hasBe() && state.ota ? "Sources ready" : "Sources missing";
+    }
+
+    function renderMapping() {
+      if (!state.mainHotel) state.categoryCollectionError = false;
+      $("#mappingEmpty").hidden = state.categories || (state.mainHotel && state.categoryCollectionError);
+      $("#categoryCollectionError").hidden = !state.mainHotel || !state.categoryCollectionError;
+      $("#mappingContent").hidden = !state.categories || state.categoryCollectionError;
+      const sourceSelected = state.live || state.bookingSourceSelected;
+      $$(".mapping-select").forEach(select => select.disabled = !state.categories || !sourceSelected);
+      $$(".source-checkbox").forEach(checkbox => {
+        checkbox.checked = sourceSelected;
+        checkbox.disabled = !state.categories;
+      });
+      const aiMappingBtn = $("#aiMappingBtn");
+      if (aiMappingBtn) aiMappingBtn.disabled = !state.categories || !sourceSelected;
+      updateMappingOptions();
+      $("#mappingHint").textContent = "Map the room types in your account with those available on OTA.";
+    }
+
+    function updateMappingOptions() {
+      const selects = $$(".mapping-select");
+      const selectedValues = selects.map(select => select.value).filter(Boolean);
+      selects.forEach(select => {
+        Array.from(select.options).forEach(option => {
+          if (!option.value) return;
+          const usedInAnotherSelect = selectedValues.includes(option.value) && select.value !== option.value;
+          option.hidden = usedInAnotherSelect;
+          option.disabled = usedInAnotherSelect;
+        });
+      });
+    }
+
+    function renderPlans() {
+      const enablePlan = $("#enablePlan");
+      if (enablePlan) enablePlan.disabled = false;
+      const currencyLabel = $("#ratePlanCurrencyLabel");
+      if (currencyLabel) currencyLabel.textContent = state.currency;
+      const empty = $("#ratePlansEmpty");
+      const table = $("#ratePlansTable");
+      if (empty) empty.hidden = state.currency === "IDR";
+      if (table) table.hidden = state.currency !== "IDR";
+      const body = $("#ratePlansBody");
+      if (!body) return;
+      const plans = ["Best Flexible IDR", "Breakfast Saver IDR", "Non Refundable Direct IDR", "Same Meal Plan IDR"];
+      const planRow = plan => {
+        const error = state.planErrors[plan];
+        return `<tr>
+          <td><a href="#">${plan}</a></td>
+          <td>${error && plan !== "Same Meal Plan IDR" ? '<span style="color: #c33131; font-weight: 700;">Error</span>' : ''}</td>
+          <td><button class="btn primary rate-plan-action" data-plan="${plan}">Enable Rate Match</button></td>
+        </tr>`;
+      };
+      if (state.planStatus === "in_progress") {
+        const selected = state.selectedPlanName || plans[0];
+        body.innerHTML = plans.map(plan => plan === selected
+          ? `<tr>
+              <td><a href="#">${plan}</a></td>
+              <td><span style="color: var(--purple); font-weight: 700;">↻</span> In progress</td>
+              <td></td>
+            </tr>`
+          : planRow(plan)
+        ).join("");
+        return;
+      }
+      if (state.planStatus === "enabled") {
+        const connectedPlans = state.connectedPlanNames.length ? state.connectedPlanNames : [state.selectedPlanName || plans[0]];
+        body.innerHTML = plans.map(plan => {
+          if (!connectedPlans.includes(plan)) {
+            return planRow(plan);
+          }
+          return `<tr>
+              <td><a href="#">${plan}</a></td>
+              <td></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td style="padding-left: 32px;"><a href="#">Best Deal: ${plan.replace(" IDR", "")}</a></td>
+              <td><span style="color: var(--green);">✓</span> Enabled</td>
+              <td><button class="btn primary" id="disableLastPlan">Disable Rate Match</button></td>
+            </tr>`;
+        }).join("");
+        return;
+      }
+      body.innerHTML = plans.map(planRow).join("");
+    }
+
+    function renderHistory() {
+      $("#historyList").innerHTML = state.history.map(event => `<div class="event"><strong>${event[0]}</strong><span>${event[1]}</span></div>`).join("");
+    }
+
+    function render() {
+      renderStatus();
+      renderChecklist();
+      renderSources();
+      renderMapping();
+      renderPlans();
+      renderHistory();
+    }
+
+    function showScreen(id) {
+      $$(".screen").forEach(el => el.classList.toggle("active", el.id === id));
+      $$(".tab, .sub").forEach(el => el.classList.toggle("active", el.dataset.screen === id));
+      const pageTitles = {
+        sources: "Hotel settings",
+        "missing-section": "Rate Match",
+      };
+      const hidesMainChrome = id === "sources" || id === "missing-section";
+      $$(".main-only").forEach(el => el.hidden = hidesMainChrome);
+      $("#pageTitle").textContent = pageTitles[id] || "Main settings";
+    }
+
+    function dangerous(reason, action) {
+      if (!state.live) {
+        action();
+        return;
+      }
+      state.pendingDanger = action;
+      state.pendingToast = "Rate Match paused by configuration change.";
+      $("#cancelModal").hidden = false;
+      $("#confirmModalBtn").hidden = false;
+      $("#modalBody").textContent = reason;
+      $("#confirmModal").classList.add("show");
+    }
+
+    function showInfoModal(title, body) {
+      $("#modalTitle").textContent = title;
+      $("#modalBody").textContent = body;
+      $("#confirmModalBtn").textContent = "OK";
+      $("#confirmModalBtn").hidden = false;
+      $("#cancelModal").hidden = true;
+      state.pendingDanger = null;
+      state.pendingToast = "";
+      $("#confirmModal").classList.add("show");
+    }
+
+    function showRequiredSettingPopup(type) {
+      $("#modalTitle").textContent = "Deactivate RateMatch first";
+      $("#modalBody").textContent = type === "ratePlan"
+        ? "After disabling this setting, RateMatch will not be able to work. First deactivate RateMatch, then disable the rate plan."
+        : "After disabling this setting, RateMatch will not be able to work. First deactivate RateMatch, then remove the room category mapping.";
+      $("#confirmModalBtn").hidden = true;
+      $("#cancelModal").hidden = false;
+      $("#cancelModal").textContent = "Cancel";
+      state.pendingDanger = null;
+      state.pendingToast = "";
+      $("#confirmModal").classList.add("show");
+    }
+
+    function showRateMatchActivatedModal() {
+      $("#modalTitle").textContent = "RateMatch activated";
+      $("#modalBody").innerHTML = `RateMatch has been activated. Price collection and price overrides will run according to the schedule.<br><br>
+        If you want to start price collection now, click the "Update Prices" button in the
+        <a href="#" data-screen="history" data-close-modal="true">Price History</a>.`;
+      $("#confirmModalBtn").textContent = "OK";
+      $("#confirmModalBtn").hidden = false;
+      $("#cancelModal").hidden = true;
+      state.pendingDanger = null;
+      state.pendingToast = "";
+      $("#confirmModal").classList.add("show");
+    }
+
+    function ratePlanConnectionError(planName) {
+      if (planName === "Breakfast Saver IDR") {
+        return {
+          message: 'The Booking Engine sales source is not selected for this rate plan. Enable this sales source in the rate plan.',
+          link: 'Open rate plan settings'
+        };
+      }
+      if (planName === "Non Refundable Direct IDR") {
+        return {
+          message: 'A rate plan with the same name as the one being created already exists. Rename or delete it.',
+          link: 'Open existing rate plan'
+        };
+      }
+      if (planName === "Same Meal Plan IDR") {
+        return {
+          type: 'mealPlan',
+          message: 'A rate plan with the same meal plan is already connected. If room categories in these rate plans match, prices will not be overridden.',
+          link: 'Open connected rate plan'
+        };
+      }
+      return null;
+    }
+
+    function showRatePlanErrorModal(error, planName) {
+      $("#modalTitle").textContent = "Rate plan cannot be connected";
+      $("#modalBody").innerHTML = `${error.message} <a href="#">${error.link}</a>`;
+      $("#confirmModalBtn").textContent = error.type === "mealPlan" ? "Continue" : "OK";
+      $("#confirmModalBtn").hidden = false;
+      $("#cancelModal").hidden = error.type !== "mealPlan";
+      state.pendingDanger = error.type === "mealPlan"
+        ? () => {
+            delete state.planErrors[planName];
+            if (!state.connectedPlanNames.includes(planName)) state.connectedPlanNames.push(planName);
+            state.selectedPlanName = state.connectedPlanNames[0] || planName;
+            state.planStatus = "enabled";
+            state.plan = true;
+            addHistory(`Rate Match was enabled for ${planName} after meal plan warning confirmation.`);
+            render();
+          }
+        : null;
+      state.pendingToast = "";
+      $("#confirmModal").classList.add("show");
+    }
+
+    function showActivationBlockers() {
+      const blockers = activationCheckboxBlockers();
+      if (!blockers.length && readyToLive()) {
+        state.live = true;
+        state.pausedReason = "";
+        addHistory("Rate Match went live after a manual activation attempt.");
+        showRateMatchActivatedModal();
+        return;
+      }
+      $("#modalTitle").textContent = "Rate Match activation is blocked";
+      $("#modalBody").innerHTML = "Complete these settings before activation:<ul>" + blockers.map(item => `<li>${item}</li>`).join("") + "</ul>";
+      $("#confirmModalBtn").textContent = "OK";
+      $("#confirmModalBtn").hidden = false;
+      $("#cancelModal").hidden = true;
+      state.pendingDanger = null;
+      state.pendingToast = "";
+      $("#confirmModal").classList.add("show");
+      addHistory("Activation attempt was blocked because required settings were missing.");
+    }
+
+    document.addEventListener("click", event => {
+      const target = event.target.closest("[data-screen]");
+      if (target) {
+        showScreen(target.dataset.screen);
+        if (target.dataset.closeModal === "true") $("#confirmModal").classList.remove("show");
+      }
+      const addMainHotel = event.target.closest("#addMainHotelAction");
+      if (addMainHotel) {
+        const menu = $("#mainHotelMenu");
+        if (menu) menu.hidden = !menu.hidden;
+      }
+      const selectMainHotel = event.target.closest("#selectMainHotelAction, .add-main-hotel-option");
+      const openHotelPicker = event.target.closest("#openHotelPicker");
+      if (openHotelPicker) {
+        state.hotelPickerOpen = true;
+        render();
+      }
+      const replaceHotel = event.target.closest("#replaceHotelAction");
+      if (replaceHotel) {
+        state.mainHotel = false;
+        state.hotelPickerOpen = true;
+        state.categories = false;
+        state.categoryCollectionError = false;
+        state.bookingSourceSelected = false;
+        state.mapping = false;
+        render();
+      }
+      if (selectMainHotel && !state.mainHotel) {
+        if (!state.beSourceAdded) {
+          state.beSourceAdded = true;
+          showInfoModal("Booking Engine source is missing", "The hotel does not have a Booking Engine source. Add the Booking Engine source and add the hotel again.");
+          addHistory("Main hotel selection was blocked because Booking Engine source is missing. Booking Engine source was added for the next attempt.");
+          render();
+          return;
+        }
+        state.mainHotel = true;
+        state.hotelPickerOpen = false;
+        state.beMode = "live";
+        state.ota = true;
+        state.categories = false;
+        state.categoryCollectionError = true;
+        state.bookingSourceSelected = false;
+        state.mapping = false;
+        showInfoModal("Main hotel added", "Main hotel has been added. Category collection has started.");
+        addHistory("Main hotel was added. Booking Engine and Booking.com sources are available. Category collection started.");
+        render();
+      }
+      const ratePlanAction = event.target.closest(".rate-plan-action");
+      if (ratePlanAction) {
+        showRatePlanConnectionModal(ratePlanAction.dataset.plan || "Best Flexible IDR");
+      }
+      const disableLastPlanAction = event.target.closest("#disableLastPlan");
+      if (disableLastPlanAction) {
+        if (state.live) {
+          showRequiredSettingPopup("ratePlan");
+          return;
+        }
+        state.plan = false;
+        state.planStatus = "none";
+        state.selectedPlanName = "";
+        state.connectedPlanNames = [];
+        addHistory("The last Rate Match rate plan was disabled after Rate Match was turned off.");
+        render();
+      }
+    });
+
+    const addBeTest = $("#addBeTest");
+    if (addBeTest) {
+      addBeTest.addEventListener("click", () => {
+        state.beMode = "test";
+        state.pausedReason = "";
+        addHistory("Booking Engine was added in test mode. Category collection is allowed; Go live is blocked.");
+        toast("BE test mode added.");
+      });
+    }
+
+    const addBeLive = $("#addBeLive");
+    if (addBeLive) {
+      addBeLive.addEventListener("click", () => {
+        state.beMode = "live";
+        state.pausedReason = "";
+        addHistory("Booking Engine was switched to live mode.");
+        toast("BE is live.");
+      });
+    }
+
+    const addOta = $("#addOta");
+    if (addOta) {
+      addOta.addEventListener("click", () => {
+        state.ota = true;
+        state.pausedReason = "";
+        addHistory("Booking.com source was added to main hotel.");
+        toast("OTA source added.");
+      });
+    }
+
+    const currencySelect = $("#currencySelect");
+    if (currencySelect) {
+      currencySelect.addEventListener("change", event => {
+        state.currency = event.target.value;
+        addHistory(`Hotel Settings currency was changed to ${state.currency}.`);
+        toast(`Currency changed to ${state.currency}.`);
+      });
+    }
+
+    const collectBtn = $("#collectBtn");
+    if (collectBtn) {
+      collectBtn.addEventListener("click", () => {
+        if (!canCollect()) return;
+        state.categories = true;
+        addHistory("OTA categories were collected before Rate Match activation.");
+        toast("Categories collected. Rate Match is still inactive.");
+      });
+    }
+
+    const categoryCollectionError = $("#categoryCollectionError");
+    if (categoryCollectionError) {
+      categoryCollectionError.addEventListener("click", event => {
+        state.categoryCollectionError = false;
+        state.categories = true;
+        addHistory("Room categories were displayed after category collection error was resolved.");
+        render();
+      });
+    }
+
+    const recommendMapping = $("#recommendMapping");
+    if (recommendMapping) {
+      recommendMapping.addEventListener("click", () => {
+        if (!state.categories) {
+          toast("Collect categories first.");
+          showScreen("health");
+          return;
+        }
+        state.mapping = true;
+        state.pausedReason = "";
+        addHistory("One room type was mapped to Booking.com category.");
+        toast("Room type mapped.");
+      });
+    }
+
+    const aiMappingBtn = $("#aiMappingBtn");
+    if (aiMappingBtn) {
+      aiMappingBtn.addEventListener("click", () => {
+        if (!state.mainHotel) return;
+        state.categoryCollectionError = false;
+        state.categories = true;
+        state.bookingSourceSelected = true;
+        const selects = $$(".mapping-select");
+        if (selects[0]) selects[0].value = "luxury";
+        if (selects[1]) selects[1].value = "comfort";
+        state.mapping = true;
+        state.pausedReason = "";
+        addHistory("Room categories were mapped with AI assistance.");
+        toast("Categories mapped with AI.");
+        render();
+      });
+    }
+
+    $$(".mapping-select").forEach(select => {
+      select.addEventListener("pointerdown", event => {
+        event.target.dataset.previousValue = event.target.value;
+      });
+      select.addEventListener("focus", event => {
+        event.target.dataset.previousValue = event.target.value;
+      });
+      select.addEventListener("change", event => {
+      if (event.target.value) {
+        state.mapping = true;
+        state.pausedReason = "";
+        addHistory("Room type mapping was selected manually.");
+      } else {
+        const hasOtherMapping = $$(".mapping-select").some(item => item !== event.target && item.value);
+        if (state.live && !hasOtherMapping) {
+          event.target.value = event.target.dataset.previousValue || "";
+          showRequiredSettingPopup("mapping");
+          render();
+          return;
+        }
+        if (hasOtherMapping) {
+          state.mapping = true;
+          render();
+          return;
+        }
+        dangerous("This will pause Rate Match because no mapped room types will remain.", () => {
+          state.mapping = false;
+          if (state.live) {
+            state.live = false;
+            state.pausedReason = "No mapped room types remain.";
+          }
+          addHistory("All room mappings were removed. Rate Match was paused if it was live.");
+        });
+      }
+      render();
+      });
+    });
+
+    $$(".source-checkbox").forEach(checkbox => {
+      checkbox.addEventListener("click", event => {
+        if (state.live && event.target.checked) {
+          event.preventDefault();
+          showRequiredSettingPopup("mapping");
+          render();
+        }
+      });
+      checkbox.addEventListener("change", event => {
+        if (state.live && !event.target.checked) {
+          event.target.checked = true;
+          showRequiredSettingPopup("mapping");
+          render();
+          return;
+        }
+        state.bookingSourceSelected = event.target.checked;
+        if (!state.bookingSourceSelected) {
+          state.mapping = false;
+          $$(".mapping-select").forEach(select => select.value = "");
+        }
+        render();
+      });
+    });
+
+    const enablePlanButton = $("#enablePlan");
+    if (enablePlanButton) {
+      enablePlanButton.addEventListener("click", () => {
+        toast("Complete the required Rate Match settings first.");
+      });
+    }
+
+    function showRatePlanConnectionModal(planName) {
+      $("#modalTitle").textContent = "Enable Rate Match in a rate plan";
+      $("#modalBody").innerHTML = `<div style="display: grid; grid-template-columns: 92px 1fr; gap: 28px; align-items: center;">
+        <div style="width: 82px; height: 82px; border: 6px solid #5b9bdc; border-radius: 50%; display: grid; place-items: center; color: #5b9bdc; font-size: 44px; font-weight: 700;">i</div>
+        <div>Once Rate Match is enabled in the rate plan, a derived rate plan will be created, and its prices will be updated automatically.</div>
+      </div>`;
+      $("#confirmModalBtn").textContent = "Enable";
+      $("#confirmModalBtn").hidden = false;
+      $("#cancelModal").hidden = false;
+      state.pendingDanger = () => {
+        const error = ratePlanConnectionError(planName);
+        if (error) {
+          state.planErrors[planName] = error.message;
+          addHistory(`Rate Match connection failed for ${planName}.`);
+          render();
+          showRatePlanErrorModal(error, planName);
+          return;
+        }
+        delete state.planErrors[planName];
+        state.selectedPlanName = planName;
+        state.planStatus = "in_progress";
+        state.plan = false;
+        addHistory(`Rate Match connection started for ${planName}.`);
+        render();
+        setTimeout(() => {
+          state.planStatus = "enabled";
+          state.plan = true;
+          if (!state.connectedPlanNames.includes(planName)) state.connectedPlanNames.push(planName);
+          addHistory(`Rate Match was enabled for ${planName}.`);
+          render();
+        }, 1400);
+      };
+      state.pendingToast = "";
+      $("#confirmModal").classList.add("show");
+    }
+
+    const goLiveBtn = $("#goLiveBtn");
+    if (goLiveBtn) {
+      goLiveBtn.addEventListener("click", () => {
+        if (!readyToLive()) return;
+        state.live = true;
+        state.pausedReason = "";
+        addHistory("Rate Match went live after all preflight checks passed.");
+        toast("Rate Match is live.");
+      });
+    }
+
+    const attemptActivateBtn = $("#attemptActivateBtn");
+    if (attemptActivateBtn) attemptActivateBtn.addEventListener("click", showActivationBlockers);
+
+    $("#activateCheckbox").addEventListener("change", event => {
+      if (!event.target.checked) {
+        if (state.live) {
+          state.live = false;
+          state.pausedReason = "";
+          addHistory("Rate Match was deactivated using the activation checkbox.");
+          toast("RateMatch deactivated.");
+          render();
+        }
+        return;
+      }
+      const blockers = activationCheckboxBlockers();
+      if (blockers.length) {
+        event.target.checked = false;
+        toast("Complete the required settings before activation.");
+        return;
+      }
+      state.live = true;
+      state.pausedReason = "";
+      addHistory("Rate Match was activated using the activation checkbox.");
+      showRateMatchActivatedModal();
+    });
+
+    const removeMapping = $("#removeMapping");
+    if (removeMapping) {
+      removeMapping.addEventListener("click", () => {
+        dangerous("This will pause Rate Match because no mapped room types will remain.", () => {
+          state.mapping = false;
+          if (state.live) {
+            state.live = false;
+            state.pausedReason = "No mapped room types remain.";
+          }
+          addHistory("All room mappings were removed. Rate Match was paused if it was live.");
+          render();
+        });
+      });
+    }
+
+    const disablePlans = $("#disablePlans");
+    if (disablePlans) {
+      disablePlans.addEventListener("click", () => {
+        dangerous("This will pause Rate Match because no enabled rate plans will remain.", () => {
+          state.plan = false;
+          if (state.live) {
+            state.live = false;
+            state.pausedReason = "No enabled Rate Match rate plans remain.";
+          }
+          addHistory("All enabled Rate Match rate plans were disabled. Rate Match was paused if it was live.");
+          render();
+        });
+      });
+    }
+
+    const copySectionDiagnostics = $("#copySectionDiagnostics");
+    if (copySectionDiagnostics) {
+      copySectionDiagnostics.addEventListener("click", () => {
+        const text = "Rate Match section unavailable: check feature access, user role, provider settings, Price Monitor hotel/source.";
+        if (navigator.clipboard) navigator.clipboard.writeText(text);
+        toast(text);
+      });
+    }
+
+    $("#copyDiagnostics").addEventListener("click", () => {
+      const blockers = requirements.filter(item => !check(item.key)).map(item => item.label);
+      const text = blockers.length ? "Rate Match blockers: " + blockers.join("; ") : "Rate Match is ready to go live.";
+      if (navigator.clipboard) navigator.clipboard.writeText(text);
+      toast(text);
+    });
+
+    $("#cancelModal").addEventListener("click", () => {
+      state.pendingDanger = null;
+      state.pendingToast = "";
+      $("#confirmModal").classList.remove("show");
+      $("#modalTitle").textContent = "This will pause Rate Match";
+      $("#confirmModalBtn").textContent = "Pause Rate Match and continue";
+      $("#confirmModalBtn").hidden = false;
+      $("#cancelModal").textContent = "Cancel";
+      $("#cancelModal").hidden = false;
+      render();
+    });
+
+    $("#confirmModalBtn").addEventListener("click", () => {
+      const action = state.pendingDanger;
+      const pendingToast = state.pendingToast;
+      state.pendingDanger = null;
+      state.pendingToast = "";
+      $("#confirmModal").classList.remove("show");
+      $("#modalTitle").textContent = "This will pause Rate Match";
+      $("#confirmModalBtn").textContent = "Pause Rate Match and continue";
+      $("#confirmModalBtn").hidden = false;
+      $("#cancelModal").textContent = "Cancel";
+      $("#cancelModal").hidden = false;
+      if (action) action();
+      if (pendingToast) toast(pendingToast);
+    });
+
+    $("#resetDemo").addEventListener("click", () => {
+      Object.assign(state, {
+        beMode: "missing",
+        ota: false,
+        mainHotel: false,
+        categories: false,
+        categoryCollectionError: false,
+        bookingSourceSelected: false,
+        mapping: false,
+        plan: false,
+        live: false,
+        pausedReason: "",
+        pendingDanger: null,
+        pendingToast: "",
+        beSourceAdded: false,
+        hotelPickerOpen: false,
+        currency: "USD",
+        planStatus: "none",
+        selectedPlanName: "",
+        connectedPlanNames: [],
+        planErrors: {},
+        history: [["Initial", "Activation health opened. Rate Match is not active."]]
+      });
+      showScreen("mapping");
+      render();
+      toast("Demo reset.");
+    });
+
+    $("#saveBtn").addEventListener("click", () => toast("Settings saved."));
+
+    render();
+  </script>
+</body>
+</html>
